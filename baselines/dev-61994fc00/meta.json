@@ -1,0 +1,7 @@
+{
+  "commit": "2469af79ac48de6c56f4560917e0adc0bce31c85",
+  "split": "dev",
+  "dataset": "7a0cf8c45164fe259bb73fefc74bc0fb4aa20874",
+  "rows": 724,
+  "note": "dev 题,没有答案文件;Numen 提交 2469af79a 的寻路行为与 61994fc00 逐位一致(那之后只做了拆分与评测);同一份代码跑两遍 results.jsonl 与 summary.md 逐字节一致"
+}
