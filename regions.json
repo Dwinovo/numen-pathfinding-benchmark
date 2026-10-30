@@ -1,0 +1,9 @@
+[
+  {"name": "hills"},
+  {"name": "mountains"},
+  {"name": "water"},
+  {"name": "forest"},
+  {"name": "caves"},
+  {"name": "nether"},
+  {"name": "mixed", "heldOnly": true}
+]
