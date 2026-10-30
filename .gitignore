@@ -1,2 +1,5 @@
 dist/
+dist-sample/
 scratch-bake/
+scratch-shards/
+scratch-bench/
