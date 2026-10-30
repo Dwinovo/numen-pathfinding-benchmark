@@ -1,7 +1,8 @@
 {
-  "commit": "2469af79ac48de6c56f4560917e0adc0bce31c85",
+  "commit": "734f12d9a04ce9032e2426ce64455c70352fa667",
   "split": "dev",
-  "dataset": "7a0cf8c45164fe259bb73fefc74bc0fb4aa20874",
-  "rows": 724,
-  "note": "dev 题,没有答案文件;Numen 提交 2469af79a 的寻路行为与 61994fc00 逐位一致(那之后只做了拆分与评测);同一份代码跑两遍 results.jsonl 与 summary.md 逐字节一致"
+  "dataset": "4adbef2cc1d4ca8b8c96e0eaab957db472e335e4",
+  "rows": 668,
+  "note": "dev 题,没有答案文件;Numen 提交 734f12d9a 的寻路行为与 61994fc00 逐位一致(那之后只做了拆分、评测与合并);同一份代码跑两遍 results.jsonl 与 summary.md 逐字节一致",
+  "answersSample": "scratch-bench3/sample 是同一批题带 35 条答案样本的报表,不进仓库"
 }
