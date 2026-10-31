@@ -11,8 +11,9 @@ For Minecraft 1.21.1 (data version 3955). The data lives in release assets (`num
 
 ```
 regions.json            有哪几块地,哪些只进封存 / the regions, and which are held-out only
-manifest.json           数据集版本、出题的 Numen 提交、每块地的题数、不适用于 A 的题数与理由 / dataset version, the Numen commit that generated the problems, counts per region, the not-applicable-to-A count and reason
-answers.jsonl           标准答案,可以没有 / reference answers, optional
+manifest.json           数据集版本、出题的 Numen 提交、两档节点上限、每块地每档实收的题数、拒绝的候选按原因的计数、第二档求解的转化与耗时、不适用于 A 的题数与理由 / dataset version, the Numen commit that generated it, the two node caps, accepted problems per region and bucket, rejected candidates by reason, how the second cap converted and how long it took, the not-applicable-to-A count and reason
+answers.jsonl           标准答案,随题一次产出,每道题的每个适用规格都有 / reference answers, produced together with the problems, one for every applicable spec of every problem
+answers-manifest.json   算出答案的 Numen 提交、两档节点上限、各状态的条数 / the Numen commit that produced the answers, the two node caps, count per status
 terrain/<地块>/          region/r.X.Z.mca(原版区域文件,512×512 格)与 terrain.properties(种子、维度、高度范围、哨兵方块)
 problems/<地块>.jsonl    题库,一行一道题 / problems, one per line
 ```
@@ -33,7 +34,9 @@ problems/<地块>.jsonl    题库,一行一道题 / problems, one per line
 
 ## 题 / Problems
 
-一行一道题(JSON),只由地形与固定随机种子定出,不依赖任何搜索算法:
+一行一道题(JSON),由地形、固定随机种子与成本模型下的精确解定出,不看生产寻路。**只收有定论的题**:候选题在每个适用的规格下,标准答案都是最优价或区域内证明的无解才收;
+路伸出区域的、两档节点上限都算不动的、只有上界的、平凡的都拒掉,继续抽候选直到每块地每档凑满 40 道。所以评测里一道题失败了,说得清是寻路没做成,不会是本来就到不了,或者区域不够大。
+Each line is a problem (JSON), fixed by the terrain, a fixed random seed and the exact solution under the cost model; production pathfinding plays no part. **Only conclusive problems are kept**: a candidate is kept only when its reference answer under every applicable spec is an optimal price or a proven no-route inside the region; routes that leave the region, those no node cap solves, those with only an upper bound, and trivial ones are rejected, and candidates are drawn until each region and bucket has 40. So when a problem fails in the benchmark, it is the pathfinder that failed, not an unreachable goal or a region that is too small.
 
 ```json
 {"id":"hills-medium-012","region":"hills","bucket":"medium","distance":93.4,
@@ -51,12 +54,15 @@ problems/<地块>.jsonl    题库,一行一道题 / problems, one per line
 
 ## 标准答案 / Reference answers
 
-单独的文件 `answers.jsonl`(与 `answers-manifest.json`,记着算出它们的 Numen 提交),**不属于出题**,可以不在:评测照跑,只是报表里没有次优比这一列。
-A separate file `answers.jsonl` (plus `answers-manifest.json` with the Numen commit that produced them). It is not part of generating the problems and may be absent: the benchmark still runs, the report just has no suboptimality column.
+单独的文件 `answers.jsonl`(与 `answers-manifest.json`,记着算出它们的 Numen 提交与两档节点上限),与题一次产出。评测读它;没有这个文件时评测照跑,只是报表里没有次优比这一列。
+A separate file `answers.jsonl` (plus `answers-manifest.json` with the Numen commit and the two node caps), produced together with the problems. The benchmark reads it; without the file the benchmark still runs, the report just has no suboptimality column.
 
-一行一条"题 × 规格":`{"id":..,"spec":"A|B","status":"optimal|best-known|unsolvable|unknown","cost":..,"expanded":..,"startEstimate":..}`。权重 1、不分段、不限时、不带记忆的 A* 在整块区域上一次搜到底(同一套走法与成本模型),只受展开节点数上限约束。
-`optimal`:最优价;`best-known`:节点上限内搜不出最优解、改用生产权重取的上界(次优比只作参考);`unsolvable`:能走到的都搜完了没有目标;`unknown`:路伸出了区域或两种搜索都没搜出路,没有答案。
-One line per problem × spec. Weight-1 A* over the whole region, same moves and cost model, no segments, no time limit, bounded only by a node cap. `optimal`: the optimal cost; `best-known`: node cap hit, an upper bound from the production weight (indicative only); `unsolvable`: everything reachable was searched, no goal; `unknown`: the route leaves the region or neither search found a route.
+一行一条"题 × 规格":`{"id":..,"spec":"A|B","status":"optimal|unsolvable","cost":..,"expanded":..,"startEstimate":..}`。权重 1、不分段、不限时、不带记忆的 A* 在整块区域上一次搜到底(同一套走法与成本模型),只受展开节点数上限约束:先按 2 000 000 个节点解,撞上限的再按 8 000 000 个重解。
+`optimal`:区域内的最优价;`unsolvable`:能走到的都搜完了没有目标、没碰到区域边——区域内证明的无解。题库里只有这两种。求解还会得出另外三种结论,它们是出题时拒题的理由:`beyond-region`(连通块碰到了区域边,区域外没加载,这份数据里没有定论,加算力也没用)、`too-hard`(两档上限都用完了)、`best-known`(算不动,但按生产权重搜到了一条路,价钱只是上界)。
+One line per problem × spec. Weight-1 A* over the whole region, same moves and cost model, no segments, no time limit, bounded only by a node cap: first 2,000,000 nodes, and those that hit it are solved again with 8,000,000. `optimal`: the optimal cost inside the region; `unsolvable`: everything reachable was searched, no goal, and the region edge was not touched, i.e. a proven no-route inside the region. Those are the only two statuses in the problem set. The solver has three more outcomes, which are the reasons a candidate is rejected: `beyond-region` (the connected component touches the region edge; what lies outside was never loaded, so there is no verdict and more compute does not help), `too-hard` (both caps used up), `best-known` (too hard, but the production weight found a route; the price is only an upper bound).
+
+这一版(v2)的数:840 道题(7 块 × 3 档 × 40),1 551 条答案(最优 1 272、无解 279);抽了 1 158 个候选,拒掉 318 个:平凡 14、路伸出区域 218、两档都算不动 63、只有上界 23。第二档(8M)的 292 条作业里 126 条最后有了定论。每块每档的数在 `manifest.json`。
+This version (v2): 840 problems (7 regions × 3 buckets × 40), 1,551 answers (1,272 optimal, 279 unsolvable). 1,158 candidates were drawn and 318 rejected (by reason, per region and bucket, in `manifest.json`): trivial 14, beyond the region 218, too hard for both caps 63, upper bound only 23. Of the 292 jobs that went to the second cap (8M), 126 ended conclusive.
 
 出题与求解器的细节、假设(身体、垫路料、加载的区块、许可)见 [GENERATION.md](GENERATION.md) 与 Numen 仓库的 `docs/adr/pathing/0031-planning-benchmark.md`。
 Generation details and the assumptions (body, materials, loaded chunks, permissions) are in [GENERATION.md](GENERATION.md) and Numen's `docs/adr/pathing/0031-planning-benchmark.md`.
