@@ -73,4 +73,5 @@ Generation details and the assumptions (body, materials, loaded chunks, permissi
 
 ## 许可 / License
 
-尚未定。/ Not decided yet.
+题目、标准答案、地图与评测记录按 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 授权,全文见 [LICENSE](LICENSE):可以自由使用、修改、再发布(含商用),注明出处即可。地图是 Minecraft 原版世界生成器生成的地形;Minecraft 是 Mojang 的商标,本数据集与 Mojang、Microsoft 无关。
+/ The problems, reference answers, maps and benchmark records are licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see [LICENSE](LICENSE). Use, adapt and redistribute them, commercially too, with attribution. The maps are terrain from Minecraft's vanilla world generator; Minecraft is a trademark of Mojang, and this dataset is not affiliated with Mojang or Microsoft.
