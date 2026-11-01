@@ -1,0 +1,549 @@
+// GRAV3D 一致性小图 / conformance maps。每张图一个块,块之间用 ===== 隔开。
+//
+//   name:   图名
+//   note:   这张图验什么
+//   start:  起点脚格 x y z(局部坐标,从 0 起)
+//   goal:   at x y z | near x y z r | dig x y z
+//   A: / E: 该赛道的期望:unsolvable | n/a | 代价表达式 [; digs=n] [; places=n](挖、放块数缺省为 0)
+//           表达式里用 grav3d/costs.json 的名字:walk diag ascend edge fall1 fall2 fall3 fallExtra swim swimV climbUp climbDown dig1 dig2 dig3 place
+//   bad:    <步号> | <路径 JSON>:一条在 A 赛道非法的路径,验证器必须判它在第 <步号> 步非法(可有多行)
+//   以 // 开头的行是注释。之后是地形,一层一块,从最低层 y=0 往上:每行是一个 z(从 0 起),每列是一个 x。图外都是墙。
+//   字符:. 空气  s 软  # 石  h 硬  B 基岩  ~ 静水  X 禁入  H 可攀爬  D 门  T 高障碍
+name: walk-line
+note: 直线平走,4 格
+start: 0 1 0
+goal: at 4 1 0
+A: 4*walk
+E: 4*walk
+bad: 1 | [[0,1,0],[2,1,0]]
+y=0
+#####
+y=1
+.....
+y=2
+.....
+=====
+name: diag-open
+note: 同高斜走,四周都空,两格斜走
+start: 0 1 0
+goal: at 2 1 2
+A: 2*diag
+E: 2*diag
+y=0
+###
+###
+###
+y=1
+...
+...
+...
+y=2
+...
+...
+...
+=====
+name: diag-one-corner-blocked
+note: 斜走不切角:一侧相邻列被挡,A 绕两步平走;E 也是绕(挖更贵)
+start: 0 1 0
+goal: at 1 1 1
+A: 2*walk
+E: 2*walk
+bad: 1 | [[0,1,0],[1,1,1]]
+y=0
+##
+##
+y=1
+.#
+..
+y=2
+..
+..
+=====
+name: diag-both-corners-blocked
+note: 两侧都被挡:A 无解;E 挖开一格(头格是空的,只挖脚格)再平走,不会斜着切角
+start: 0 1 0
+goal: at 1 1 1
+A: unsolvable
+E: 2*walk + dig2 ; digs=1
+y=0
+##
+##
+y=1
+.#
+#.
+y=2
+..
+..
+=====
+name: ascend-step
+note: 上一级
+start: 0 1 0
+goal: at 1 2 0
+A: ascend
+E: ascend
+y=0
+####
+y=1
+.#..
+y=2
+....
+y=3
+....
+=====
+name: ascend-no-headroom
+note: 起点头顶上方那格是实心,不能上一级;E 挖掉它
+start: 0 1 0
+goal: at 1 2 0
+A: unsolvable
+E: ascend + dig2 ; digs=1
+bad: 1 | [[0,1,0],[1,2,0]]
+y=0
+####
+y=1
+.#..
+y=2
+....
+y=3
+#...
+=====
+name: drop-1
+note: 走出边沿下落 1 格
+start: 0 2 0
+goal: at 1 1 0
+A: edge + fall1
+E: edge + fall1
+y=0
+##
+y=1
+#.
+y=2
+..
+y=3
+..
+=====
+name: drop-2
+note: 走出边沿下落 2 格
+start: 0 3 0
+goal: at 1 1 0
+A: edge + fall2
+E: edge + fall2
+y=0
+##
+y=1
+#.
+y=2
+#.
+y=3
+..
+y=4
+..
+=====
+name: drop-3
+note: 下落 3 格,落在实心上,是上限
+start: 0 4 0
+goal: at 1 1 0
+A: edge + fall3
+E: edge + fall3
+y=0
+##
+y=1
+#.
+y=2
+#.
+y=3
+#.
+y=4
+..
+y=5
+..
+=====
+name: drop-4-onto-solid
+note: 落 4 格落在实心上不行:A 无解;E 先挖掉脚下一格,变成落 3 格
+start: 0 5 0
+goal: at 1 1 0
+A: unsolvable
+E: (fall1 + dig2) + (edge + fall3) ; digs=1
+bad: 1 | [[0,5,0],[1,1,0]]
+y=0
+##
+y=1
+#.
+y=2
+#.
+y=3
+#.
+y=4
+#.
+y=5
+..
+y=6
+..
+=====
+name: drop-into-water
+note: 落进水不限格数:落 5 格进水
+start: 0 7 0
+goal: at 1 2 0
+A: edge + fall3 + 2*fallExtra
+E: edge + fall3 + 2*fallExtra
+y=0
+##
+y=1
+#~
+y=2
+#~
+y=3
+#.
+y=4
+#.
+y=5
+#.
+y=6
+#.
+y=7
+..
+y=8
+..
+=====
+name: drop-stops-at-first-support
+note: 下落落到第一个支撑,不能穿过落脚点往下:A 无解;E 落到壁架上,挖壁架、垫块,再下一格
+start: 0 5 0
+goal: at 1 1 0
+A: unsolvable
+E: edge + fall2 + (fall1 + dig2 + place) + fall1 ; digs=1 ; places=1
+y=0
+##
+y=1
+#.
+y=2
+##
+y=3
+#.
+y=4
+#.
+y=5
+..
+y=6
+..
+=====
+name: swim-channel
+note: 水中水平游
+start: 0 1 0
+goal: at 4 1 0
+A: 4*swim
+E: 4*swim
+y=0
+#####
+y=1
+~~~~~
+y=2
+~~~~~
+=====
+name: swim-vertical
+note: 水中上游
+start: 0 1 0
+goal: at 0 4 0
+A: 3*swimV
+E: 3*swimV
+y=0
+#
+y=1
+~
+y=2
+~
+y=3
+~
+y=4
+~
+y=5
+~
+=====
+name: swim-no-diagonal
+note: 水里没有斜走,两步游
+start: 0 1 0
+goal: at 1 1 1
+A: 2*swim
+E: 2*swim
+y=0
+##
+##
+y=1
+~~
+~~
+y=2
+~~
+~~
+=====
+name: water-exit-by-ascend
+note: 从水里上岸一级:上一级比游上去再游过去便宜
+start: 0 1 0
+goal: at 1 2 0
+A: ascend
+E: ascend
+y=0
+##
+y=1
+~#
+y=2
+~.
+y=3
+..
+=====
+name: shore-step-is-swim
+note: 一端在水里的水平一步按游算
+start: 0 1 0
+goal: at 1 1 0
+A: swim
+E: swim
+y=0
+##
+y=1
+.~
+y=2
+..
+=====
+name: climb-up
+note: 爬梯向上
+start: 0 1 0
+goal: at 0 4 0
+A: 3*climbUp
+E: 3*climbUp
+y=0
+#
+y=1
+H
+y=2
+H
+y=3
+H
+y=4
+H
+y=5
+.
+=====
+name: climb-down
+note: 爬梯向下
+start: 0 4 0
+goal: at 0 1 0
+A: 3*climbDown
+E: 3*climbDown
+y=0
+#
+y=1
+H
+y=2
+H
+y=3
+H
+y=4
+H
+y=5
+.
+=====
+name: ladder-exit
+note: 在梯子上上一级到壁顶,比爬到顶再平走便宜
+start: 0 1 0
+goal: at 1 4 0
+A: 2*climbUp + ascend
+E: 2*climbUp + ascend
+y=0
+##
+y=1
+H#
+y=2
+H#
+y=3
+H#
+y=4
+H.
+y=5
+..
+=====
+name: lava-wall
+note: 岩浆禁入:挡住整条通道,A、E 都无解(E 也挖不了、放不了岩浆)
+start: 0 1 0
+goal: at 4 1 0
+A: unsolvable
+E: unsolvable
+y=0
+#####
+y=1
+..X..
+y=2
+..X..
+=====
+name: lava-floor
+note: 禁入的格不是支撑,也放不了块
+start: 0 1 0
+goal: at 4 1 0
+A: unsolvable
+E: unsolvable
+y=0
+##X##
+y=1
+.....
+y=2
+.....
+=====
+name: fence-wall
+note: 高障碍挡路,站不上;E 按软档挖开两格
+start: 0 1 0
+goal: at 2 1 0
+A: unsolvable
+E: 2*walk + 2*dig1 ; digs=2
+y=0
+###
+y=1
+.T.
+y=2
+.T.
+=====
+name: door-passes
+note: 门可通行
+start: 0 1 0
+goal: at 2 1 0
+A: 2*walk
+E: 2*walk
+y=0
+###
+y=1
+.D.
+y=2
+.D.
+=====
+name: bedrock-wall
+note: 基岩挖不动:A、E 都无解
+start: 0 1 0
+goal: at 2 1 0
+A: unsolvable
+E: unsolvable
+y=0
+###
+y=1
+.B.
+y=2
+.B.
+=====
+name: tunnel-tiers
+note: E 穿过软、石、硬三档的墙,每格脚头各挖一次
+start: 0 1 0
+goal: at 4 1 0
+A: unsolvable
+E: 4*walk + 2*dig1 + 2*dig2 + 2*dig3 ; digs=6
+y=0
+#####
+y=1
+.s#h.
+y=2
+.s#h.
+=====
+name: pillar-shaft
+note: 垫柱:每上一格付一次上一级加一次放块
+start: 0 1 0
+goal: at 0 4 0
+A: unsolvable
+E: 3*(ascend + place) ; places=3
+y=0
+#
+y=1
+.
+y=2
+.
+y=3
+.
+y=4
+.
+y=5
+.
+=====
+name: dig-down-shaft
+note: 向下挖:身体占的两格视为空,第二步不再为头格付挖掘
+start: 0 3 0
+goal: at 0 1 0
+A: unsolvable
+E: 2*(fall1 + dig2) ; digs=2
+y=0
+#
+y=1
+#
+y=2
+#
+y=3
+.
+y=4
+.
+=====
+name: bridge-gap
+note: 搭桥:脚下无支撑就放一块,两格缺口付两次
+start: 0 1 0
+goal: at 3 1 0
+A: unsolvable
+E: 3*walk + 2*place ; places=2
+y=0
+#..#
+y=1
+....
+y=2
+....
+=====
+name: near-goal
+note: near 目标:脚格到目标格中心欧氏距离不超过半径就算到
+start: 0 1 0
+goal: near 5 1 0 2
+A: 3*walk
+E: 3*walk
+y=0
+######
+y=1
+......
+y=2
+......
+=====
+name: dig-goal
+note: dig 目标:站到与目标格面相邻的位置,加挖它的代价;A 不适用
+start: 0 1 0
+goal: dig 3 1 0
+A: n/a
+E: 2*walk + 5*dig2 ; digs=5
+y=0
+####
+y=1
+.###
+y=2
+.###
+=====
+name: sealed-cavity
+note: 目标在封闭的空腔里:A 无解;E 挖开隔墙(脚头两格)
+start: 0 1 0
+goal: at 3 1 0
+A: unsolvable
+E: 3*walk + 2*dig2 ; digs=2
+y=0
+######
+y=1
+..#.#.
+y=2
+..#.#.
+=====
+name: start-midair
+note: 起点脚下没有支撑:两个赛道都不适用
+start: 0 1 0
+goal: at 1 1 0
+A: n/a
+E: n/a
+y=0
+.#
+y=1
+..
+y=2
+..
+=====
+name: start-head-outside
+note: 图外是墙:头格在图外,起点站不住
+start: 0 1 0
+goal: at 1 1 0
+A: n/a
+E: n/a
+y=0
+##
+y=1
+..
