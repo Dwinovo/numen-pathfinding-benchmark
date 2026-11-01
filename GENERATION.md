@@ -48,3 +48,37 @@ When only the answers must be recomputed (the cost model changed, so the answers
 ```
 
 重算后某道题的结论可能不再是最优或无解(算不动了、碰到区域边了):那道题在新的成本模型下没有定论,应当换掉,重新出题。/ After a recompute a problem may no longer be conclusive (too hard now, or touching the region edge): it has no verdict under the new cost model and should be replaced, i.e. generate again.
+
+## 4. v3:中立地形与 GRAV3D 答案 / v3: the neutral terrain and the GRAV3D answers
+
+v3 不改题,也不改 `.mca`;它在它们之上加一层(`neutral/`、`scenarios/`、`grav3d/`),规则是 [RULES.md](RULES.md),格式是 [FORMAT.md](FORMAT.md)。
+v3 changes neither the problems nor the `.mca` files; it adds a layer on top (`neutral/`, `scenarios/`, `grav3d/`), with the rules in [RULES.md](RULES.md) and the formats in [FORMAT.md](FORMAT.md).
+
+```
+# 1. 导出中立地形(Numen 仓库;读 .mca,方块状态到类别码由原版碰撞形状、硬度与语义算出)
+./gradlew :numen:pathing:pathingExport -PpathingDataset=<v2 目录> -PpathingExportOut=<v3 目录>
+#    导出的 neutral/classes.json 必须与本仓库的 neutral/classes.json 一致(类别表只有这一个出处,导出程序写它,仓库里的是拷贝)
+
+# 2. v2 题库换成局部坐标的场景 CSV
+python3 tools/convert_v2.py <v2 目录> <v3 目录>
+
+# 3. 求解(任何有 JDK 的机器,每线程每赛道约 0.8 GB,1 680 个题×赛道在 20 核上约 2.6 分钟)
+javac -d out tools/solver/Solve.java
+java -Xmx80g -XX:+UseParallelGC -cp out Solve --classes neutral/classes.json --costs grav3d/costs.json \
+     --map <v3 目录>/neutral/<地> --scenarios <v3 目录>/scenarios/<地>.csv --tracks A,E \
+     --answers <地>-answers.csv --paths <地>-paths.jsonl --threads 20
+
+# 4. 验证:参考路径全部过验证器(独立写的 Python);一致性小图;零估价抽查(--no-heuristic true,与 A* 的答案必须逐条相同)
+python3 tools/validate.py --map <v3 目录>/neutral/<地> --scenarios <v3 目录>/scenarios/<地>.csv \
+        --answers <地>-answers.csv --paths <地>-paths.jsonl
+python3 tests/conformance/run.py
+
+# 5. 打包:写 grav3d/manifest.json、zip、sha256
+python3 tools/make_package.py --v2 <v2 目录> --v3 <v3 目录> --solved <求解输出目录> --out <zip>
+```
+
+求解器与验证器是两份各自从 RULES.md 写出来的实现,互不引用;一致性小图(`tests/conformance/cases.txt`)用 `grav3d/costs.json` 的名字写期望的价钱,两边都要对得上。
+The solver and the validator are two implementations written separately from RULES.md, referencing nothing of each other; the conformance maps (`tests/conformance/cases.txt`) write the expected costs as expressions over the names in `grav3d/costs.json`, and both must agree with them.
+
+估价是 `⌈walk·水平欧氏距离 + 1300·垂直距离⌉`(`near`、`dig` 目标取到目标集合的下界):每一步的代价都不低于 `walk·水平位移 + 1300·垂直位移`,所以它一致,向上取整不破坏一致性。
+The estimate is `⌈walk·horizontal Euclidean distance + 1300·vertical distance⌉` (for `near` and `dig` goals, the distance to the goal set): every move costs at least `walk·horizontal displacement + 1300·vertical displacement`, so it is consistent, and rounding up keeps it so.

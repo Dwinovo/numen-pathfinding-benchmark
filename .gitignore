@@ -5,3 +5,6 @@ scratch-shards/
 scratch-bench/
 scratch-v2/
 scratch-v2-zip/
+scratch-v3/
+scratch-v3-zip/
+__pycache__/
