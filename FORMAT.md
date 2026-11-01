@@ -15,11 +15,11 @@ grav3d/costs.json               the cost table of the rules (see RULES.md)
 grav3d/manifest.json            counts per region and track, solver run, checksums
 grav3d/answers/<region>.csv     reference answers (both tracks)
 grav3d/paths/<region>.jsonl     reference paths
-tools/validate.py, tools/solver/Solve.java, tools/convert_v2.py
+tools/validate.py, tools/solver/Solve.java, tools/make_scenarios.py, tools/make_package.py
 tests/conformance/              hand-built small maps with expected optimal values
-terrain/<region>/               the original Minecraft region files (.mca) and terrain.properties (v2, unchanged)
+terrain/<region>/               the original Minecraft region files (.mca) and terrain.properties
 problems/<region>.jsonl, regions.json, manifest.json, answers.jsonl, answers-manifest.json
-                                the v2 files, unchanged (Minecraft world coordinates; the answers are Numen's own planner's)
+                                the Numen layer (Minecraft world coordinates; the answers are Numen's own search under pure physical time, not a true optimum)
 ```
 
 ## `neutral/classes.json`

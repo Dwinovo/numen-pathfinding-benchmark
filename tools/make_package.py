@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """把 v3 的各部分拼成发布包,写 grav3d/manifest.json,打 zip 并报 sha256。
 
-用法:make_package.py --v2 <v2 数据集目录> --v3 <v3 工作目录> --solved <求解输出目录> --out <zip 路径> [--solve-seconds <region=秒,...>]
-  --v3      含 neutral/(导出的中立地形)与 scenarios/(convert_v2.py 的输出)
+用法:make_package.py --numen <Numen 层目录> --v3 <GRAV3D 工作目录> --solved <求解输出目录> --out <zip 路径> [--solve-seconds <region=秒,...>]
+  --numen   含 regions.json、manifest.json、answers.jsonl、answers-manifest.json、problems/、terrain/(出题的输出与存档,即 Numen 层)
+  --v3      含 neutral/(导出的中立地形)与 scenarios/(make_scenarios.py 的输出)
   --solved  含 <地>-answers.csv 与 <地>-paths.jsonl(参考求解器的输出)
 包内容见 FORMAT.md。zip 里的文件按路径排序、时间戳固定,同样的输入打出同样的包。
 """
@@ -18,8 +19,8 @@ import zipfile
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 TOP_FILES = ["README.md", "RULES.md", "FORMAT.md", "GENERATION.md", "LICENSE", "CITATION.cff"]
-V2_FILES = ["regions.json", "manifest.json", "answers.jsonl", "answers-manifest.json"]
-V2_DIRS = ["terrain", "problems"]
+NUMEN_FILES = ["regions.json", "manifest.json", "answers.jsonl", "answers-manifest.json"]
+NUMEN_DIRS = ["terrain", "problems"]
 
 
 def sha256(path):
@@ -32,24 +33,24 @@ def sha256(path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--v2", required=True)
+    ap.add_argument("--numen", required=True)
     ap.add_argument("--v3", required=True)
     ap.add_argument("--solved", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--solve-seconds", default="", help="region=秒,region=秒:求解墙钟,写进 manifest")
     args = ap.parse_args()
 
-    with open(os.path.join(args.v2, "regions.json"), encoding="utf-8") as f:
+    with open(os.path.join(args.numen, "regions.json"), encoding="utf-8") as f:
         regions = [r["name"] for r in json.load(f)]
 
     stage = tempfile.mkdtemp(prefix="pb-v3-")
     try:
         for name in TOP_FILES:
             shutil.copy(os.path.join(REPO, name), os.path.join(stage, name))
-        for name in V2_FILES:
-            shutil.copy(os.path.join(args.v2, name), os.path.join(stage, name))
-        for name in V2_DIRS:
-            shutil.copytree(os.path.join(args.v2, name), os.path.join(stage, name))
+        for name in NUMEN_FILES:
+            shutil.copy(os.path.join(args.numen, name), os.path.join(stage, name))
+        for name in NUMEN_DIRS:
+            shutil.copytree(os.path.join(args.numen, name), os.path.join(stage, name))
         shutil.copytree(os.path.join(args.v3, "neutral"), os.path.join(stage, "neutral"))
         shutil.copytree(os.path.join(args.v3, "scenarios"), os.path.join(stage, "scenarios"))
         os.makedirs(os.path.join(stage, "grav3d", "answers"))
@@ -59,7 +60,7 @@ def main():
             shutil.copy(os.path.join(args.solved, r + "-answers.csv"), os.path.join(stage, "grav3d", "answers", r + ".csv"))
             shutil.copy(os.path.join(args.solved, r + "-paths.jsonl"), os.path.join(stage, "grav3d", "paths", r + ".jsonl"))
         os.makedirs(os.path.join(stage, "tools", "solver"))
-        for name in ("validate.py", "convert_v2.py", "make_package.py", "LICENSE"):
+        for name in ("validate.py", "make_scenarios.py", "make_package.py", "LICENSE"):
             shutil.copy(os.path.join(REPO, "tools", name), os.path.join(stage, "tools", name))
         shutil.copy(os.path.join(REPO, "tools", "solver", "Solve.java"), os.path.join(stage, "tools", "solver", "Solve.java"))
         shutil.copytree(os.path.join(REPO, "tests"), os.path.join(stage, "tests"), ignore=shutil.ignore_patterns("__pycache__"))

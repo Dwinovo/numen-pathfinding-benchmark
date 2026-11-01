@@ -24,10 +24,12 @@ Each class has these flags (the values are in `neutral/classes.json`; this table
 | 3 | hard | no | yes | no | no | 3 | no | solid, hardness ≥ 3: deepslate, ores, obsidian |
 | 4 | bedrock | no | yes | no | no | – | no | solid, cannot be dug |
 | 5 | water | yes | no | yes | no | – | yes | still water (source blocks) |
-| 6 | forbidden | no | no | no | no | – | no | lava, fire, cactus, powder snow, cobweb, flowing water, bubble columns: cannot enter, stand on, dig or place into |
+| 6 | forbidden | no | no | no | no | – | no | lava, fire, cactus, powder snow, cobweb, pressure plates and tripwires, farmland and turtle eggs, flowing water, bubble columns: cannot enter, stand on, dig or place into |
 | 7 | climb | yes | no | no | yes | – | no | ladders, vines, scaffolding |
 | 8 | door | yes | no | no | no | – | no | doors a body can open by hand: passable, cannot be stood on |
 | 9 | tall | no | no | no | no | 1 | no | fences, walls: block movement, cannot be stood on |
+
+The `forbidden` class is the set of cells that Numen's own route planner excludes by default (lava, hazardous blocks, flowing water, triggers, fragile blocks). Powder snow is in it on purpose: a body without leather boots sinks into it. The problem generator also never picks a start or goal whose body cells or support are in this set.
 
 `P`, `S`, `W`, `L` are used below as predicates on a cell: `P(c)` means the cell's class is passable, and so on. "Dig tier" `n` costs `dig[n]` (section 6) to remove the cell; a cell is *diggable* if its tier is not `–`.
 
