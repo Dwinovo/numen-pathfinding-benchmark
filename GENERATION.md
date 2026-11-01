@@ -49,38 +49,12 @@ When only the answers must be recomputed (the cost model changed, so the answers
 
 重算后某道题的结论可能不再是最优或无解(算不动了、碰到区域边了):那道题在新的成本模型下没有定论,应当换掉,重新出题。/ After a recompute a problem may no longer be conclusive (too hard now, or touching the region edge): it has no verdict under the new cost model and should be replaced, i.e. generate again.
 
-## 4. v3:中立地形与 GRAV3D 答案 / v3: the neutral terrain and the GRAV3D answers
+## 4. v3 与 v3.1 / v3 and v3.1
 
-v3 的题是重出的(同种子、同流程,起终点还要求身体碰到的格不是路线规格排除的种类,所以与 v2 的题集不同,见 README),标准答案改成物理口径(放、挖、起跳、涉水、挨着伤身格走的罚分与挖掘遮挡的偏好全为 0,只算刻数,另记挖放块数);`.mca` 不变;再加一层 GRAV3D(`neutral/`、`scenarios/`、`grav3d/`),规则是 [RULES.md](RULES.md),格式是 [FORMAT.md](FORMAT.md)。
-The v3 problems were regenerated (same seeds and procedure, but starts and goals must also not touch cells of a kind the route spec excludes, so the set differs from v2, see the README), the reference answers use a physical-time cost (penalties for placing, digging, jumping, wading and walking beside harmful blocks and the sight-blocker preference are 0; only ticks count, with digs and places recorded); the `.mca` files are unchanged; and a GRAV3D layer is added (`neutral/`, `scenarios/`, `grav3d/`), with the rules in [RULES.md](RULES.md) and the formats in [FORMAT.md](FORMAT.md).
+v3 的题是重出的(同种子、同流程,起终点还要求身体碰到的格不是路线规格排除的种类,所以与 v2 的题集不同,见 README),标准答案改成物理口径(放、挖、起跳、涉水、挨着伤身格走的罚分与挖掘遮挡的偏好全为 0,只算刻数,另记挖放块数);`.mca` 不变。v3.1 与 v3 的题集、答案、地形相同,只是发布包里不再带 v3 附带的公共层。
+The v3 problems were regenerated (same seeds and procedure, but starts and goals must also not touch cells of a kind the route spec excludes, so the set differs from v2, see the README), and the reference answers use a physical-time cost (penalties for placing, digging, jumping, wading and walking beside harmful blocks and the sight-blocker preference are 0; only ticks count, with digs and places recorded); the `.mca` files are unchanged. v3.1 has the same problems, answers and terrain as v3; the package just no longer carries the extra layer v3 shipped with.
 
-```
-# 0. 出题与物理口径的答案(Numen 仓库的 pathingGenerate,见上面第 2 节;输出 problems/、answers.jsonl、manifest.json)
+## 5. 打包 / Packaging
 
-# 1. 导出中立地形(Numen 仓库;读 .mca,方块状态到类别码由原版碰撞形状、硬度与语义算出)
-./gradlew :numen:pathing:pathingExport -PpathingDataset=<Numen 层目录> -PpathingExportOut=<v3 目录>
-#    导出的 neutral/classes.json 必须与本仓库的 neutral/classes.json 一致(类别表只有这一个出处,导出程序写它,仓库里的是拷贝)
-
-# 2. 题库换成局部坐标的场景 CSV
-python3 tools/make_scenarios.py <Numen 层目录> <v3 目录>
-
-# 3. 求解(任何有 JDK 的机器,每线程每赛道约 0.8 GB,1 680 个题×赛道在 20 核上约 2.6 分钟)
-javac -d out tools/solver/Solve.java
-java -Xmx80g -XX:+UseParallelGC -cp out Solve --classes neutral/classes.json --costs grav3d/costs.json \
-     --map <v3 目录>/neutral/<地> --scenarios <v3 目录>/scenarios/<地>.csv --tracks A,E \
-     --answers <地>-answers.csv --paths <地>-paths.jsonl --threads 20
-
-# 4. 验证:参考路径全部过验证器(独立写的 Python);一致性小图;零估价抽查(--no-heuristic true,与 A* 的答案必须逐条相同)
-python3 tools/validate.py --map <v3 目录>/neutral/<地> --scenarios <v3 目录>/scenarios/<地>.csv \
-        --answers <地>-answers.csv --paths <地>-paths.jsonl
-python3 tests/conformance/run.py
-
-# 5. 打包:写 grav3d/manifest.json、zip、sha256
-python3 tools/make_package.py --numen <Numen 层目录> --v3 <v3 目录> --solved <求解输出目录> --out <zip>
-```
-
-求解器与验证器是两份各自从 RULES.md 写出来的实现,互不引用;一致性小图(`tests/conformance/cases.txt`)用 `grav3d/costs.json` 的名字写期望的价钱,两边都要对得上。
-The solver and the validator are two implementations written separately from RULES.md, referencing nothing of each other; the conformance maps (`tests/conformance/cases.txt`) write the expected costs as expressions over the names in `grav3d/costs.json`, and both must agree with them.
-
-估价是 `⌈walk·水平欧氏距离 + 1300·垂直距离⌉`(`near`、`dig` 目标取到目标集合的下界):每一步的代价都不低于 `walk·水平位移 + 1300·垂直位移`,所以它一致,向上取整不破坏一致性。
-The estimate is `⌈walk·horizontal Euclidean distance + 1300·vertical distance⌉` (for `near` and `dig` goals, the distance to the goal set): every move costs at least `walk·horizontal displacement + 1300·vertical displacement`, so it is consistent, and rounding up keeps it so.
+发布包 `numen-pathfinding-benchmark-<版本>-mc1.21.1.zip` 的内容就是出题输出的目录(第 2 节)加上本仓库的 `README.md`、`GENERATION.md`、`LICENSE`、`CITATION.cff`:`terrain/`、`problems/`、`regions.json`、`manifest.json`、`answers.jsonl`、`answers-manifest.json`。zip 里的文件按路径排序、时间戳固定为 2020-01-01、权限 0644,同样的输入打出同样的包;`sha256sum` 算校验码,填进 Numen 仓库 `numen/pathing/build.gradle` 的 `pathingDatasetVersion` 与 `pathingDatasetSha256`。
+The release zip `numen-pathfinding-benchmark-<version>-mc1.21.1.zip` is the generator's output directory (section 2) plus this repo's `README.md`, `GENERATION.md`, `LICENSE` and `CITATION.cff`: `terrain/`, `problems/`, `regions.json`, `manifest.json`, `answers.jsonl`, `answers-manifest.json`. Entries are sorted by path with timestamps fixed at 2020-01-01 and mode 0644, so the same input gives the same package; compute the checksum with `sha256sum` and put it into `pathingDatasetVersion` and `pathingDatasetSha256` in Numen's `numen/pathing/build.gradle`.
